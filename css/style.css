@@ -294,6 +294,7 @@ input[type="text"]:focus {
 .target-cards-fan {
   display: flex;
   justify-content: center;
+  justify-content: safe center;
   align-items: center;
   gap: 8px;
   overflow-x: auto;
@@ -467,6 +468,7 @@ input[type="text"]:focus {
 .hand-dock {
   display: flex;
   justify-content: center;
+  justify-content: safe center;
   align-items: flex-end;
   gap: -15px;
   overflow-x: auto;
