@@ -632,17 +632,26 @@ input[type="text"]:focus {
   top: 70px;
   left: 50%;
   transform: translateX(-50%) translateY(-100px);
+  opacity: 0;
+  visibility: hidden;
   background: rgba(15, 23, 42, 0.95);
   border: 1px solid var(--accent);
   box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
   padding: 10px 24px;
   border-radius: 30px;
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+              opacity 0.3s ease,
+              visibility 0s linear 0.3s;
   z-index: 1000;
   pointer-events: none;
 }
 .action-banner.show {
   transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  visibility: visible;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+              opacity 0.3s ease,
+              visibility 0s linear 0s;
 }
 
 /* RESULTS SCREEN LEADERBOARD */
