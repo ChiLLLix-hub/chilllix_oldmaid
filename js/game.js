@@ -45,6 +45,9 @@ let knownReactions = {};
 let reactionCooldown = false;
 let toastTimeout = null;
 let lastRecentDiscards = [];
+let justMatchedPairId = null;
+let justMatchedTimeout = null;
+let lastGameData = null;
 
 document.addEventListener('DOMContentLoaded', startLobbyPolling);
 
@@ -293,6 +296,7 @@ async function startSyncLoop() {
 function renderGameState(data) {
   const { room, players, my_hand, suggested_pairs, recent_discards, target_opponent: targetOpponent, xray_hands } = data;
   lastRecentDiscards = recent_discards || [];
+  lastGameData = data;
 
   // Top header player name
   const me = players.find(p => p.id == myPlayerId);
@@ -443,7 +447,7 @@ function renderGameState(data) {
       document.getElementById('targetPickTitle').innerText = `👉 Pick a card from ${targetOpponent.player_name}:`;
       let fanHtml = '';
       for (let i = 0; i < count; i++) {
-        fanHtml += `<div class="card-back" onclick="executePickCard(${i})"></div>`;
+        fanHtml += `<div class="card-back" onclick="executePickCard(${i}, event)"></div>`;
       }
       targetFan.innerHTML = fanHtml;
     } else {
@@ -483,16 +487,41 @@ function renderGameState(data) {
   const pairCardIds = new Set();
   (suggested_pairs || []).forEach(p => p.card_ids.forEach(id => pairCardIds.add(id)));
 
+  // Arrange hand so that paired cards sit side by side, keeping overall order stable otherwise
+  const orderedHand = [];
+  const placed = new Set();
   my_hand.forEach(c => {
-    const el = renderCard(c, true, pairCardIds.has(c.id));
+    if (placed.has(c.id)) return;
+    orderedHand.push(c);
+    placed.add(c.id);
+    if (pairCardIds.has(c.id)) {
+      const partner = my_hand.find(x => x.id !== c.id && x.pair_id === c.pair_id && !placed.has(x.id));
+      if (partner) {
+        orderedHand.push(partner);
+        placed.add(partner.id);
+      }
+    }
+  });
+
+  orderedHand.forEach(c => {
+    const isPair = pairCardIds.has(c.id);
+    const el = renderCard(c, true, isPair);
+    if (isPair && c.pair_id === justMatchedPairId) {
+      el.classList.add('just-matched');
+    }
+    el.dataset.cardId = c.id;
     handContainer.appendChild(el);
   });
 }
 
 // --- CARD ACTIONS ---
-async function executePickCard(index) {
+async function executePickCard(index, event) {
   if (isProcessing) return;
   isProcessing = true;
+
+  const sourceEl = event ? event.currentTarget : null;
+  const sourceRect = sourceEl ? sourceEl.getBoundingClientRect() : null;
+
   document.getElementById('processingOverlay').classList.remove('hidden');
 
   const res = await fetch('api/api.php?action=pick_card', {
@@ -514,15 +543,76 @@ async function executePickCard(index) {
 
   if (data.picked_card) {
     const c = data.picked_card;
+    await animateCardPickup(c, sourceRect);
+
     if (data.has_pair) {
       playSound('pair');
       showActionBanner(`You picked ${c.card_symbol} ${c.card_title} and made a PAIR! Check suggested pairs.`);
+      triggerPairGlow(c.pair_id);
     } else if (c.pair_id === 'old_maid') {
       showActionBanner(`⚠️ OH NO! You picked THE OLD MAID! 🧙‍♀️`);
     } else {
       showActionBanner(`You drew ${c.card_symbol} ${c.card_title} from ${data.from_player}`);
     }
   }
+}
+
+// Slides a card from the opponent's fan (or a fallback point) into the player's hand dock.
+function animateCardPickup(card, sourceRect) {
+  return new Promise(resolve => {
+    const handEl = document.getElementById('playerHand');
+    if (!handEl) return resolve();
+    const handRect = handEl.getBoundingClientRect();
+
+    const start = sourceRect || {
+      left: handRect.left + handRect.width / 2 - 35,
+      top: handRect.top - 160,
+      width: 70,
+      height: 105
+    };
+
+    const flying = renderCard(card, false);
+    flying.classList.add('card-flying');
+    flying.style.left = `${start.left}px`;
+    flying.style.top = `${start.top}px`;
+    flying.style.width = `${start.width || 70}px`;
+    flying.style.height = `${start.height || 105}px`;
+    document.body.appendChild(flying);
+
+    // Force reflow so the transition picks up the starting position before we move it.
+    void flying.offsetWidth;
+
+    const targetLeft = handRect.left + handRect.width / 2 - 40;
+    const targetTop = handRect.top + handRect.height / 2 - 60;
+
+    requestAnimationFrame(() => {
+      flying.style.left = `${targetLeft}px`;
+      flying.style.top = `${targetTop}px`;
+      flying.style.width = '80px';
+      flying.style.height = '120px';
+      flying.style.opacity = '0.95';
+    });
+
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      flying.remove();
+      resolve();
+    };
+    flying.addEventListener('transitionend', finish, { once: true });
+    setTimeout(finish, 700); // Safety net in case transitionend doesn't fire.
+  });
+}
+
+// Marks the matched pair so the next render highlights it with a pulsing glow, then clears it.
+function triggerPairGlow(pairId) {
+  justMatchedPairId = pairId;
+  if (justMatchedTimeout) clearTimeout(justMatchedTimeout);
+  justMatchedTimeout = setTimeout(() => {
+    justMatchedPairId = null;
+    if (lastGameData) renderGameState(lastGameData);
+  }, 2800);
 }
 
 async function discardPair(pairId) {

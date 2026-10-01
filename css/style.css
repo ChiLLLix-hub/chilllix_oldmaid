@@ -505,6 +505,27 @@ input[type="text"]:focus {
   box-shadow: 0 0 15px rgba(253, 224, 71, 0.6);
 }
 
+/* Newly completed pair gets a stronger pulsing/glowing highlight */
+.card-illustrated.just-matched {
+  border-color: #fde047;
+  animation: glowPulse 0.9s ease-in-out infinite alternate;
+  z-index: 5;
+}
+
+/* FLYING CARD (pick-up slide animation) */
+.card-flying {
+  position: fixed;
+  pointer-events: none;
+  z-index: 3000;
+  opacity: 0.85;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), 0 0 20px rgba(99, 102, 241, 0.6);
+  transition: left 0.55s cubic-bezier(0.22, 0.9, 0.36, 1),
+              top 0.55s cubic-bezier(0.22, 0.9, 0.36, 1),
+              width 0.55s ease,
+              height 0.55s ease,
+              opacity 0.3s ease;
+}
+
 .card-top {
   display: flex;
   justify-content: space-between;
@@ -770,6 +791,11 @@ input[type="text"]:focus {
 @keyframes glowPurple {
   0% { box-shadow: 0 0 10px rgba(192, 132, 252, 0.4); }
   100% { box-shadow: 0 0 25px rgba(192, 132, 252, 0.9); }
+}
+
+@keyframes glowPulse {
+  0% { box-shadow: 0 0 10px rgba(253, 224, 71, 0.5); transform: scale(1); }
+  100% { box-shadow: 0 0 28px rgba(253, 224, 71, 1); transform: scale(1.07); }
 }
 
 @keyframes slideDown {
