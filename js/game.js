@@ -291,7 +291,7 @@ async function startSyncLoop() {
 
 // --- GAME STATE RENDERING ---
 function renderGameState(data) {
-  const { room, players, my_hand, suggested_pairs, recent_discards, target_opponent, xray_hands } = data;
+  const { room, players, my_hand, suggested_pairs, recent_discards, target_opponent: targetOpponent, xray_hands } = data;
   lastRecentDiscards = recent_discards || [];
 
   // Top header player name
