@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="oldmaid-realtime-url" content="">
+  <title>Old Maid - Multiplayer Card Game</title>
+  <link rel="stylesheet" href="css/style.css?v=1.0">
+</head>
+<body>
+
+<div id="toastMessage" class="toast-notification hidden"></div>
+
+<header>
+  <div class="logo">OLD MAID</div>
+  <div id="myTopNameDisplay" class="header-player-name"></div>
+  <div id="roomBadge" class="badge">Not Connected</div>
+</header>
+
+<!-- LOBBY SCREEN -->
+<div id="lobbyScreen" class="screen">
+  <div class="card-box" style="max-width: 520px;">
+    <h2>Play Old Maid</h2>
+    <p class="subtitle">Match animal pairs, avoid the Old Maid card, and escape!</p>
+    <input type="text" id="playerName" placeholder="Enter your name" maxlength="15" value="Player">
+
+    <!-- 5-Slot Room Browser -->
+    <div class="room-browser" id="roomBrowser">
+      <div style="color: #94a3b8; font-style: italic;">Loading rooms...</div>
+    </div>
+
+    <!-- Manual Code Fallback -->
+    <div style="margin: 20px 0; color: #64748b; font-size: 0.85rem; font-weight: bold;">— OR JOIN BY CODE —</div>
+    <div style="display: flex; gap: 10px;">
+      <input type="text" id="joinRoomCode" placeholder="CODE" maxlength="5" style="text-transform: uppercase; margin-bottom: 0;">
+      <button class="btn btn-success" style="margin-bottom: 0; width: auto; padding: 0 25px;" onclick="joinGameCode()">Join</button>
+    </div>
+  </div>
+</div>
+
+<!-- WAITING ROOM SCREEN -->
+<div id="waitingScreen" class="screen hidden">
+  <div class="card-box">
+    <h2>Room: <span id="displayRoomCode" style="color: #f59e0b; cursor: pointer; text-decoration: underline;" onclick="copyRoomCode()"></span></h2>
+    
+    <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
+      <button class="btn btn-primary" style="width: auto; padding: 8px 16px; margin: 0;" onclick="copyRoomCode()">📋 Copy</button>
+      <button class="btn" style="width: auto; padding: 8px 16px; margin: 0; background: #25d366; color: white;" onclick="shareRoomCode()">💬 Share</button>
+    </div>
+    
+    <div id="waitingPlayersList" style="margin-bottom: 25px; text-align: left; background: #0f172a; padding: 12px; border-radius: 8px;"></div>
+    
+    <button class="btn btn-success hidden" id="startGameBtn" onclick="startGame()">Start Game</button>
+    <div id="waitingForHostMsg" class="hidden" style="color: #94a3b8; font-style: italic; padding: 10px 0;">Waiting for the host to start the game...</div>
+    <button class="btn btn-warning" onclick="returnToLobby()" style="margin-top: 10px; background: transparent; border: 1px solid #475569;">Leave Room</button>
+  </div>
+</div>
+
+<!-- GAME ARENA SCREEN -->
+<div id="arenaScreen" class="arena hidden">
+  <!-- OPPONENTS ROW -->
+  <div class="opponents-row" id="opponentsRow"></div>
+
+  <!-- CENTER STAGE -->
+  <div class="center-stage">
+    <div class="active-indicator" id="turnIndicator">Waiting...</div>
+    
+    <!-- Target Opponent's Hand (Interactive pick zone when it's your turn) -->
+    <div id="targetPickContainer" class="target-pick-container hidden">
+      <div class="target-pick-title" id="targetPickTitle">Pick a card from Opponent!</div>
+      <div class="target-cards-fan" id="targetCardsFan"></div>
+    </div>
+
+    <!-- Center Table Stats & Discarded Pairs Pile -->
+    <div class="center-table-info">
+      <div class="table-stat-card" id="pairsPileBox" onclick="toggleDiscardGallery()">
+        <span class="stat-number" id="pairsCountDisplay">0</span>
+        <span class="stat-label">Pairs Discarded</span>
+      </div>
+      <div class="table-stat-card" id="escapedPlayersBox">
+        <span class="stat-number" id="escapedCountDisplay">0</span>
+        <span class="stat-label">Players Safe 🏆</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPECTATOR / ESCAPED BANNER -->
+  <div id="spectatorBanner" class="spectator-banner hidden">👀 Spectating (Waiting for next round)</div>
+  <div id="escapedBanner" class="escaped-banner hidden">🎉 You Escaped Safe! Relax and watch the others!</div>
+
+  <!-- PAIR SUGGESTION TRAY -->
+  <div id="pairSuggestionTray" class="pair-suggestion-tray hidden">
+    <div class="pair-suggestion-header">
+      <span>✨ Matching Pairs Detected!</span>
+      <button class="btn-discard-all" onclick="discardAllPairs()">Discard All Pairs</button>
+    </div>
+    <div class="pair-suggestion-chips" id="pairSuggestionChips"></div>
+  </div>
+
+  <!-- REACTION TRAY -->
+  <div class="reaction-tray" id="reactionTray">
+    <div class="reaction-chip" onclick="sendReaction('🔥')">🔥</div>
+    <div class="reaction-chip" onclick="sendReaction('😭')">😭</div>
+    <div class="reaction-chip" onclick="sendReaction('😎')">😎</div>
+    <div class="reaction-chip" onclick="sendReaction('😱')">😱</div>
+    <div class="reaction-chip text" onclick="sendReaction('Don\'t pick that!')">Don't pick that!</div>
+    <div class="reaction-chip text" onclick="sendReaction('Safe! 🥳')">Safe! 🥳</div>
+  </div>
+
+  <!-- HAND DOCK -->
+  <div class="hand-dock-wrapper">
+    <div class="hand-dock-controls">
+      <span id="myCardCountDisplay">Your Hand: 0 cards</span>
+      <button class="btn-shuffle-hand" onclick="shuffleMyHand()">🔀 Shuffle Hand</button>
+    </div>
+    <div class="hand-dock" id="playerHand"></div>
+  </div>
+</div>
+
+<!-- RESULTS / GAME OVER SCREEN -->
+<div id="winnerScreen" class="screen hidden">
+  <div class="card-box" style="border-color: #8b5cf6; box-shadow: 0 0 35px rgba(139, 92, 246, 0.4); max-width: 500px;">
+    <div style="font-size: 3.5rem; margin-bottom: 5px;">🧙‍♀️</div>
+    <h2 id="loserTitle" style="color: #ef4444; font-size: 1.8rem; margin-bottom: 5px;">The Old Maid is...</h2>
+    <h3 id="loserName" style="color: #f87171; font-size: 2.2rem; margin-bottom: 15px;">Player</h3>
+    
+    <div id="resultsLeaderboard" class="results-leaderboard"></div>
+
+    <button class="btn btn-primary" onclick="returnToLobby()" style="margin-top: 20px;">Return to Menu</button>
+  </div>
+</div>
+
+<!-- DISCARDED PAIRS GALLERY MODAL -->
+<div id="discardGalleryModal" class="modal-overlay hidden" onclick="toggleDiscardGallery()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <h3>Discarded Pairs Gallery</h3>
+    <div class="discard-gallery-grid" id="discardGalleryGrid"></div>
+    <button class="btn btn-primary" style="margin-top: 15px;" onclick="toggleDiscardGallery()">Close</button>
+  </div>
+</div>
+
+<!-- PROCESSING OVERLAY -->
+<div id="processingOverlay" class="modal-overlay hidden" style="background: rgba(0,0,0,0.4); z-index: 2000;">
+  <div style="font-size: 4.5rem; animation: pulse 1.5s infinite ease-in-out;">🎴</div>
+</div>
+
+<!-- ACTION BANNER (When someone draws/pairs) -->
+<div id="actionBanner" class="action-banner">
+  <h3 id="actionBannerText">Player drew a card!</h3>
+</div>
+
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+<script src="js/game.js?v=1.0"></script>
+</body>
+</html>

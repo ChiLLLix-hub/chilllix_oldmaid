@@ -1,0 +1,4 @@
+node_modules/
+api/config.local.php
+.DS_Store
+*.log
